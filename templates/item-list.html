@@ -1,0 +1,5 @@
+{{define "item-list.html"}}
+{{range .Items}}
+  {{template "item-row.html" (dict "T" $.T "Lang" $.Lang "Item" .)}}
+{{end}}
+{{end}}

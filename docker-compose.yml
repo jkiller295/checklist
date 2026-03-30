@@ -1,0 +1,26 @@
+services:
+  checklist:
+    build: .
+    container_name: checklist
+    restart: unless-stopped
+
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+
+    environment:
+      HOUSEHOLD_PASSWORD: ${HOUSEHOLD_PASSWORD:-changeme}
+      DB_PATH: /data/checklist.db
+      PORT: ${PORT:-8080}
+
+    volumes:
+      - checklist-data:/data
+
+    # optional: basic healthcheck
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:${PORT:-8080}"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  checklist-data:

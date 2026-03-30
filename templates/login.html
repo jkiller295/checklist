@@ -1,0 +1,42 @@
+{{define "login.html"}}<!DOCTYPE html>
+<html lang="{{.Lang}}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{call .T "sign_in"}} - My Simple To-Do App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body class="login-body">
+  <div class="login-card">
+    <div class="login-brand">
+      <span class="brand-icon">✓</span>
+      <h1>My Simple To-Do App</h1>
+    </div>
+    <form method="POST" action="/login" class="login-form">
+      {{if .Error}}
+        <p class="error-msg">{{.Error}}</p>
+      {{end}}
+      <label for="password">{{call .T "password"}}</label>
+      <input
+        id="password"
+        type="password"
+        name="password"
+        autofocus
+        autocomplete="current-password"
+        placeholder="••••••••"
+      >
+      <button type="submit">{{call .T "sign_in"}}</button>
+    </form>
+    <div class="login-lang">
+      <form method="POST" action="/lang" style="display:inline">
+        <input type="hidden" name="lang" value="{{if eq .Lang "en"}}vi{{else}}en{{end}}">
+        <button type="submit" class="lang-link">
+          {{if eq .Lang "en"}}Tiếng Việt{{else}}English{{end}}
+        </button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>{{end}}

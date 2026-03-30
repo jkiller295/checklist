@@ -1,0 +1,39 @@
+{{define "list-stats.html"}}
+<div id="list-stats" class="list-stats">
+  {{if gt .List.ItemCount 0}}
+  <div class="list-actions">
+    {{if lt .List.DoneCount .List.ItemCount}}
+    <button
+      class="btn-ghost-sm"
+      hx-post="/lists/{{.List.ID}}/check-all"
+      hx-target="#item-list"
+      hx-swap="innerHTML"
+      hx-on::after-request="htmx.trigger('#list-stats-wrap', 'refresh-stats')">
+      {{template "icons/select-all" .}} {{call .T "select_all"}}
+    </button>
+    {{end}}
+    {{if gt .List.DoneCount 0}}
+    <button
+      class="btn-ghost-sm"
+      hx-post="/lists/{{.List.ID}}/uncheck-all"
+      hx-target="#item-list"
+      hx-swap="innerHTML"      
+      {{if eq .List.DoneCount 0}}disabled{{end}}>      
+      {{template "icons/deselect-all" .}} {{call .T "uncheck_all"}}
+    </button>
+    <button
+      class="btn-ghost-sm danger-sm"
+      hx-delete="/lists/{{.List.ID}}/checked"
+      hx-target="#item-list"
+      hx-swap="innerHTML"
+      hx-on::after-request="htmx.trigger('#list-stats-wrap', 'refresh-stats')">
+      {{template "icons/trash" .}} {{call .T "delete_checked"}}
+    </button>
+    {{end}}
+  </div>
+  <div class="progress-bar-wrap">
+    <div class="progress-bar" style="width: {{percent .List.DoneCount .List.ItemCount}}%"></div>
+  </div>
+  {{end}}
+</div>
+{{end}}

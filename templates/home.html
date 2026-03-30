@@ -1,0 +1,84 @@
+{{define "home-page"}}<!DOCTYPE html>
+<html lang="{{.Lang}}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Simple To-Do App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <header class="site-header">
+    <a href="/" class="brand">My Simple To-Do App</a>
+    <div class="header-actions">
+      <button
+        hx-post="/lang"
+        hx-vals='{"lang": "{{if eq .Lang "en"}}vi{{else}}en{{end}}"}'
+        hx-swap="none"
+        class="lang-btn"
+        title="{{call .T "language"}}">
+        {{if eq .Lang "en"}}🇻🇳 VI{{else}}🇬🇧 EN{{end}}
+      </button>
+      <form method="POST" action="/logout" style="margin:0">
+        <button type="submit" class="signout-btn">{{call .T "sign_out"}}</button>
+      </form>
+    </div>
+  </header>
+  <main class="main-content">
+    <div class="home-page">
+      <div class="page-top">
+        <h2 class="page-title">{{call .T "lists"}}</h2>
+        <button class="btn-primary" @click="$dispatch('open-new-list')" x-data>
+          + {{call .T "new_list"}}
+        </button>
+      </div>
+
+      <!-- New list modal -->
+      <div
+        x-data="{open:false, name:''}"
+        x-on:open-new-list.window="open=true; $nextTick(()=>$refs.listNameInput.focus())"
+        x-show="open"
+        x-cloak
+        class="modal-backdrop"
+        @click.self="open=false">
+        <div class="modal-box" @click.stop>
+          <h3>{{call .T "new_list"}}</h3>
+          <form
+            hx-post="/lists"
+            hx-target="#list-grid"
+            hx-swap="afterbegin"
+            @submit.prevent="if(name.trim()){ htmx.trigger($el,'submit'); open=false; name='' }">
+            <input
+              x-ref="listNameInput"
+              x-model="name"
+              type="text"
+              name="name"
+              placeholder="{{call .T "list_name"}}"
+              class="modal-input"
+              autocomplete="off"
+              @keydown.escape="open=false">
+            <div class="modal-actions">
+              <button type="button" class="btn-ghost" @click="open=false">{{call .T "cancel"}}</button>
+              <button type="submit" class="btn-primary" :disabled="!name.trim()">{{call .T "create"}}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      {{if not .Lists}}
+      <p class="empty-state">{{call .T "no_lists"}}</p>
+      {{end}}
+
+      <div id="list-grid" class="list-grid">
+        {{range .Lists}}
+          {{template "list-card.html" (dict "T" $.T "Lang" $.Lang "List" .)}}
+        {{end}}
+      </div>
+    </div>
+  </main>
+</body>
+</html>
+{{end}}

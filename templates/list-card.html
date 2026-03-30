@@ -1,0 +1,59 @@
+{{define "list-card.html"}}
+<div
+  id="list-{{.List.ID}}"
+  class="list-card"
+  x-data="{editing:false, name:'{{js .List.Name}}'}"
+  hx-target="this"
+  hx-swap="outerHTML">
+
+  <a href="/lists/{{.List.ID}}" class="card-link" x-show="!editing">
+    <div class="card-name">{{.List.Name}}</div>
+    <div class="card-meta">
+      {{if eq .List.ItemCount 0}}
+        <span class="meta-empty">—</span>
+      {{else if eq .List.ItemCount .List.DoneCount}}
+        <span class="meta-done">✓ {{call .T "all_done"}}</span>
+      {{else}}
+        <span class="meta-count">{{.List.DoneCount}}/{{.List.ItemCount}} {{call .T "items_done"}}</span>
+      {{end}}
+    </div>
+  </a>
+
+  <form
+    x-show="editing"
+    x-cloak
+    hx-put="/lists/{{.List.ID}}"
+    hx-on::after-request="editing=false"
+    @submit.prevent="htmx.trigger($el, 'submit')">
+    <input
+      type="text"
+      name="name"
+      x-model="name"
+      class="inline-edit-input"
+      @keydown.escape="editing=false"
+      x-ref="renameInput">
+    <div class="inline-edit-actions">
+      <button type="submit" class="btn-xs-primary">{{call .T "save"}}</button>
+      <button type="button" class="btn-xs-ghost" @click="editing=false">{{call .T "cancel"}}</button>
+    </div>
+  </form>
+
+  <div class="card-actions" x-show="!editing">
+    <button
+      class="icon-btn"
+      title="{{call .T "rename"}}"
+      @click="editing=true; $nextTick(()=>{ $refs.renameInput.focus(); $refs.renameInput.select() })">
+      {{template "icons/pencil" .}}
+    </button>
+    <button
+      class="icon-btn danger btn-danger"
+      title="{{call .T "delete"}}"
+      hx-delete="/lists/{{.List.ID}}"
+      hx-confirm="{{call .T "delete_list_confirm"}}"
+      hx-target="#list-{{.List.ID}}"
+      hx-swap="outerHTML">
+      {{template "icons/trash" .}}
+    </button>
+  </div>
+</div>
+{{end}}

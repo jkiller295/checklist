@@ -1,0 +1,7 @@
+.git
+.env
+*.db
+*.db-wal
+*.db-shm
+checklist
+__debug_bin

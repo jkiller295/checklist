@@ -1,0 +1,79 @@
+{{define "list-page"}}<!DOCTYPE html>
+<html lang="{{.Lang}}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.List.Name}} — My Simple To-Do App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <header class="site-header">
+    <a href="/" class="brand">My Simple To-Do App</a>
+    <div class="header-actions">
+      <button
+        hx-post="/lang"
+        hx-vals='{"lang": "{{if eq .Lang "en"}}vi{{else}}en{{end}}"}'
+        hx-swap="none"
+        class="lang-btn"
+        title="{{call .T "language"}}">
+        {{if eq .Lang "en"}}🇻🇳 VI{{else}}🇬🇧 EN{{end}}
+      </button>
+      <form method="POST" action="/logout" style="margin:0">
+        <button type="submit" class="signout-btn">{{call .T "sign_out"}}</button>
+      </form>
+    </div>
+  </header>
+  <main class="main-content">
+    <div class="list-page">
+      <div class="list-header">
+        <a href="/" class="back-link">← {{call .T "lists"}}</a>
+        <h2 class="list-title">{{.List.Name}}</h2>
+      </div>
+
+      <!-- Add item form -->
+      <form
+        class="add-item-form"
+        hx-post="/lists/{{.List.ID}}/items"
+        hx-target="#item-list"
+        hx-swap="beforeend"
+        hx-on::after-request="this.reset(); this.querySelector('input').focus(); htmx.trigger('#list-stats-wrap', 'refresh-stats')"
+        x-data>
+        <input
+          type="text"
+          name="text"
+          placeholder="{{call .T "item_placeholder"}}"
+          class="add-item-input"
+          autocomplete="off"
+          @keydown.escape="$el.blur()">
+        <button type="submit" class="btn-primary">{{call .T "add_item"}}</button>
+      </form>
+
+      <!-- Stats wrap: progress bar + action buttons, auto-refreshed -->
+      <div
+        id="list-stats-wrap"
+        hx-get="/lists/{{.List.ID}}/stats"
+        hx-trigger="refresh-stats"
+        hx-target="#list-stats-wrap"
+        hx-swap="innerHTML">
+        {{template "list-stats.html" .}}
+      </div>
+
+      <!-- Item list — empty hint sits AFTER so CSS sibling selector works -->
+      <div
+        id="item-list"
+        class="item-list"
+        hx-on:htmx:after-swap="htmx.trigger('#list-stats-wrap', 'refresh-stats')">
+        {{range .Items}}
+          {{template "item-row.html" (dict "T" $.T "Lang" $.Lang "Item" .)}}
+        {{end}}
+      </div>
+      <p class="empty-hint">{{call .T "empty_list"}}</p>
+    </div>
+  </main>
+</body>
+</html>
+{{end}}

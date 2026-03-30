@@ -1,0 +1,56 @@
+{{define "item-row.html"}}
+<div
+  id="item-{{.Item.ID}}"
+  class="item-row {{if .Item.Done}}done{{end}}"
+  x-data="{editing:false, text:'{{js .Item.Text}}'}"
+  hx-target="this"
+  hx-swap="outerHTML"
+  hx-on::after-swap="htmx.trigger('#list-stats-wrap', 'refresh-stats')">
+
+  <!-- Normal view -->
+  <label class="item-label" x-show="!editing">
+    <input
+      type="checkbox"
+      class="item-check"
+      {{if .Item.Done}}checked{{end}}
+      hx-patch="/items/{{.Item.ID}}/toggle"
+      hx-trigger="change">
+    <span class="item-text">{{.Item.Text}}</span>
+  </label>
+
+  <!-- Edit view -->
+  <form
+    x-show="editing"
+    x-cloak
+    hx-put="/items/{{.Item.ID}}"
+    hx-on::after-request="editing=false"
+    @submit.prevent="htmx.trigger($el, 'submit')"
+    class="item-edit-form">
+    <input
+      type="text"
+      name="text"
+      x-model="text"
+      class="inline-edit-input"
+      @keydown.escape="editing=false"
+      x-ref="editInput">
+    <button type="submit" class="btn-xs-primary">{{call .T "save"}}</button>
+    <button type="button" class="btn-xs-ghost" @click="editing=false">{{call .T "cancel"}}</button>
+  </form>
+
+  <!-- Actions -->
+  <div class="item-actions" x-show="!editing">
+    <button
+      class="icon-btn"
+      @click="editing=true; $nextTick(()=>{ $refs.editInput.focus(); $refs.editInput.select() })"
+      title="{{call .T "edit"}}">{{template "icons/pencil" .}}</button>
+    <button
+      class="icon-btn danger btn-danger"
+      hx-delete="/items/{{.Item.ID}}"
+      hx-confirm="{{call .T "delete_item_confirm"}}"
+      hx-target="#item-{{.Item.ID}}"
+      hx-swap="outerHTML"
+      hx-on::after-request="htmx.trigger('#list-stats-wrap', 'refresh-stats')"
+      title="{{call .T "delete"}}">{{template "icons/trash" .}}</button>
+  </div>
+</div>
+{{end}}
