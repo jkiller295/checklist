@@ -53,6 +53,18 @@ input  { font-family: inherit; }
   letter-spacing: -.02em;
 }
 
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
 .header-actions { display: flex; align-items: center; gap: 10px; }
 
 .lang-btn {

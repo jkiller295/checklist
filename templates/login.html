@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="icon" href="/static/images/logo.png" />
 </head>
 <body class="login-body">
   <div class="login-card">
@@ -27,7 +28,7 @@
         autocomplete="current-password"
         placeholder="••••••••"
       >
-      <button type="submit">{{call .T "sign_in"}}</button>
+      <button type="submit" class="btn-primary">{{call .T "sign_in"}}</button>
     </form>
     <div class="login-lang">
       <form method="POST" action="/lang" style="display:inline">

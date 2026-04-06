@@ -56,7 +56,7 @@ func (s *Server) render(w http.ResponseWriter, name string, data any) {
 
 func (s *Server) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/login" || strings.HasPrefix(r.URL.Path, "/static/") {
+		if r.URL.Path == "/login" || r.URL.Path == "/lang" || strings.HasPrefix(r.URL.Path, "/static/") {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -138,7 +138,7 @@ func (s *Server) handleLang(w http.ResponseWriter, r *http.Request) {
 	})
 	ref := r.Header.Get("Referer")
 	if ref == "" {
-		ref = "/"
+		ref = "/login"
 	}
 	// Support both HTMX and plain form requests
 	if r.Header.Get("HX-Request") == "true" {
