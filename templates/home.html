@@ -50,10 +50,10 @@
         <div class="modal-box" @click.stop>
           <h3>{{call .T "new_list"}}</h3>
           <form
-            hx-post="/lists"
-            hx-target="#list-grid"
-            hx-swap="afterbegin"
-            @submit.prevent="if(name.trim()){ htmx.trigger($el,'submit'); open=false; name='' }">
+              hx-post="/lists"
+              hx-target="#list-grid"
+              hx-swap="outerHTML"
+              @submit.prevent="if(name.trim()){ htmx.trigger($el,'submit'); open=false; name='' }">
             <input
               x-ref="listNameInput"
               x-model="name"
@@ -71,15 +71,7 @@
         </div>
       </div>
 
-      {{if not .Lists}}
-      <p class="empty-state">{{call .T "no_lists"}}</p>
-      {{end}}
-
-      <div id="list-grid" class="list-grid">
-        {{range .Lists}}
-          {{template "list-card.html" (dict "T" $.T "Lang" $.Lang "List" .)}}
-        {{end}}
-      </div>
+      {{template "list-grid.html" (dict "T" .T "Lang" .Lang "Lists" .Lists)}}
     </div>
   </main>
 </body>

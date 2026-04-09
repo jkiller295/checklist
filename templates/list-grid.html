@@ -1,0 +1,11 @@
+{{define "list-grid.html"}}
+<div id="list-grid" class="list-grid">
+  {{if not .Lists}}
+    <p class="empty-state">{{call .T "no_lists"}}</p>
+  {{else}}
+    {{range .Lists}}
+      {{template "list-card.html" (dict "T" $.T "Lang" $.Lang "List" .)}}
+    {{end}}
+  {{end}}
+</div>
+{{end}}

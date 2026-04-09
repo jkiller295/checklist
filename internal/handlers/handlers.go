@@ -181,15 +181,25 @@ func (s *Server) handleCreateList(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	list, err := s.DB.CreateList(name)
+	_, err := s.DB.CreateList(name)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	s.render(w, "list-card.html", map[string]any{
-		"T":    func(k string) string { return s.t(r, k) },
-		"Lang": s.lang(r),
-		"List": list,
+	s.renderListGrid(w, r)
+}
+
+func (s *Server) renderListGrid(w http.ResponseWriter, r *http.Request) {
+	lists, err := s.DB.GetLists()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	s.render(w, "list-grid.html", map[string]any{
+		"T":     func(k string) string { return s.t(r, k) },
+		"Lang":  s.lang(r),
+		"Lists": lists,
 	})
 }
 
@@ -199,7 +209,7 @@ func (s *Server) handleDeleteList(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	s.renderListGrid(w, r)
 }
 
 func (s *Server) handleRenameList(w http.ResponseWriter, r *http.Request) {

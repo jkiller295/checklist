@@ -50,7 +50,7 @@
       title="{{call .T "delete"}}"
       hx-delete="/lists/{{.List.ID}}"
       hx-confirm="{{call .T "delete_list_confirm"}}"
-      hx-target="#list-{{.List.ID}}"
+      hx-target="#list-grid"
       hx-swap="outerHTML">
       {{template "icons/trash" .}}
     </button>
