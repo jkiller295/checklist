@@ -1,0 +1,99 @@
+{{define "backup-restore"}}<!DOCTYPE html>
+<html lang="{{.Lang}}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{call .T "backup_restore"}} — My Simple To-Do App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="icon" href="/static/images/logo.png" />
+</head>
+<body>
+  <header class="site-header">
+    <img src="/static/images/logo.png" alt="Checklist" class="logo" />
+    <a href="/" class="brand">My Simple To-Do App</a>
+    <div class="header-actions">
+      <button
+        hx-post="/lang"
+        hx-vals='{"lang": "{{if eq .Lang "en"}}vi{{else}}en{{end}}"}'
+        hx-swap="none"
+        class="lang-btn"
+        title="{{call .T "language"}}">
+        {{if eq .Lang "en"}}🇻🇳 VI{{else}}🇬🇧 EN{{end}}
+      </button>
+      <form method="POST" action="/logout" style="margin:0">
+        <button type="submit" class="signout-btn">{{call .T "sign_out"}}</button>
+      </form>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="list-page">
+      <div class="list-header">
+        <a href="/" class="back-link">← {{call .T "lists"}}</a>
+        <br/>
+        <h1 class="list-title">{{call .T "backup_restore"}}</h1>
+      </div>
+
+      <p class="card-meta">{{call .T "backup_restore_desc"}}</p>
+
+      <div class="backup-restore-grid">
+        <section class="list-card backup-card">
+          <div class="list-card-header">
+            <h2 class="card-name">{{call .T "backup"}}</h2>
+          </div>
+
+          <p class="card-meta">{{call .T "backup_desc"}}</p>
+
+          <div class="backup-restore-actions">
+            <a href="/backup" class="btn btn-primary">{{call .T "download_backup"}}</a>
+          </div>
+        </section>
+
+        <section class="list-card restore-card">
+          <div class="list-card-header">
+            <h2 class="card-name">{{call .T "restore"}}</h2>
+          </div>
+
+          <p class="card-meta">{{call .T "restore_desc"}}</p>
+          <p class="restore-warning"><strong>{{call .T "restore_warning"}}</strong></p>
+
+          <form
+            method="post"
+            action="/restore"
+            enctype="multipart/form-data"
+            onsubmit="return confirmRestore(this);"
+            class="restore-form"
+          >
+            <input
+              type="file"
+              name="backup"
+              accept="application/json,.json"
+              required
+              class="restore-file-input btn-ghost-sm"
+            />
+            <button type="submit" class="btn btn-primary">{{call .T "restore_now"}}</button>
+          </form>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function confirmRestore(form) {
+      const fileInput = form.querySelector('input[type="file"]');
+      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        alert("Please choose a backup file.");
+        return false;
+      }
+
+      const typed = prompt("Type RESTORE to overwrite all current data.");
+      return typed === "RESTORE";
+    }
+  </script>
+</body>
+</html>
+{{end}}

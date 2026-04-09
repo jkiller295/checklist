@@ -3,7 +3,7 @@ package db
 import (
 	"database/sql"
 	"time"
-
+	"encoding/json"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -26,6 +26,28 @@ type Item struct {
 	Done      bool
 	CreatedAt time.Time
 }
+
+type BackupFile struct {
+	Version    int          `json:"version"`
+	ExportedAt string       `json:"exportedAt"`
+	Lists      []BackupList `json:"lists"`
+	Items      []BackupItem `json:"items"`
+}
+
+type BackupList struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	CreatedAt string `json:"createdAt"`
+}
+
+type BackupItem struct {
+	ID        int64  `json:"id"`
+	ListID    int64  `json:"listId"`
+	Text      string `json:"text"`
+	Done      bool   `json:"done"`
+	CreatedAt string `json:"createdAt"`
+}
+
 
 func Open(path string) (*DB, error) {
 	conn, err := sql.Open("sqlite3", path+"?_journal_mode=WAL&_foreign_keys=on")
@@ -207,5 +229,167 @@ func (d *DB) CheckAll(listID int64) error {
 }
 func (d *DB) UncheckAll(listID int64) error {
 	_, err := d.conn.Exec(`UPDATE items SET done=0 WHERE list_id=?`, listID)
+	return err
+}
+
+func (d *DB) ExportBackup() (*BackupFile, error) {
+	listRows, err := d.conn.Query(`
+		SELECT id, name, created_at
+		FROM lists
+		ORDER BY created_at DESC, id DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer listRows.Close()
+
+	var lists []BackupList
+	for listRows.Next() {
+		var list BackupList
+		var createdAt time.Time
+
+		if err := listRows.Scan(&list.ID, &list.Name, &createdAt); err != nil {
+			return nil, err
+		}
+
+		list.CreatedAt = createdAt.UTC().Format(time.RFC3339)
+		lists = append(lists, list)
+	}
+
+	itemRows, err := d.conn.Query(`
+		SELECT id, list_id, text, done, created_at
+		FROM items
+		ORDER BY list_id ASC, done ASC, text ASC, id ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer itemRows.Close()
+
+	var items []BackupItem
+	for itemRows.Next() {
+		var item BackupItem
+		var done int
+		var createdAt time.Time
+
+		if err := itemRows.Scan(&item.ID, &item.ListID, &item.Text, &done, &createdAt); err != nil {
+			return nil, err
+		}
+
+		item.Done = done == 1
+		item.CreatedAt = createdAt.UTC().Format(time.RFC3339)
+		items = append(items, item)
+	}
+
+	return &BackupFile{
+		Version:    1,
+		ExportedAt: time.Now().UTC().Format(time.RFC3339),
+		Lists:      lists,
+		Items:      items,
+	}, nil
+}
+
+func (d *DB) RestoreBackup(data []byte) error {
+	var backup BackupFile
+	if err := json.Unmarshal(data, &backup); err != nil {
+		return err
+	}
+
+	if backup.Version != 1 {
+		return sql.ErrTxDone
+	}
+
+	tx, err := d.conn.Begin()
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	_, err = tx.Exec(`DELETE FROM items`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`DELETE FROM lists`)
+	if err != nil {
+		return err
+	}
+
+	for _, list := range backup.Lists {
+		if list.Name == "" {
+			continue
+		}
+
+		createdAt := time.Now().UTC()
+		if list.CreatedAt != "" {
+			parsed, parseErr := time.Parse(time.RFC3339, list.CreatedAt)
+			if parseErr == nil {
+				createdAt = parsed
+			}
+		}
+
+		_, err = tx.Exec(`
+			INSERT INTO lists (id, name, created_at)
+			VALUES (?, ?, ?)
+		`, list.ID, list.Name, createdAt)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, item := range backup.Items {
+		if item.Text == "" {
+			continue
+		}
+
+		createdAt := time.Now().UTC()
+		if item.CreatedAt != "" {
+			parsed, parseErr := time.Parse(time.RFC3339, item.CreatedAt)
+			if parseErr == nil {
+				createdAt = parsed
+			}
+		}
+
+		done := 0
+		if item.Done {
+			done = 1
+		}
+
+		_, err = tx.Exec(`
+			INSERT INTO items (id, list_id, text, done, created_at)
+			VALUES (?, ?, ?, ?, ?)
+		`, item.ID, item.ListID, item.Text, done, createdAt)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = tx.Exec(`DELETE FROM sqlite_sequence WHERE name IN ('lists', 'items')`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+		INSERT INTO sqlite_sequence (name, seq)
+		SELECT 'lists', COALESCE(MAX(id), 0) FROM lists
+	`)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`
+		INSERT INTO sqlite_sequence (name, seq)
+		SELECT 'items', COALESCE(MAX(id), 0) FROM items
+	`)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
 	return err
 }

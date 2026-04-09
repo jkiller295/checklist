@@ -3,7 +3,10 @@ package handlers
 import (
 	"checklist/internal/db"
 	"checklist/internal/i18n"
+	"encoding/json"
+	"errors"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -90,6 +93,10 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /lists/{id}/checked", s.handleClearChecked)
 	mux.HandleFunc("POST /lists/{id}/check-all", s.handleCheckAll)
 	mux.HandleFunc("POST /lists/{id}/uncheck-all", s.handleUncheckAll)
+
+	mux.HandleFunc("GET /settings/backups", s.handleBackupRestorePage)
+	mux.HandleFunc("GET /backup", s.handleBackup)
+	mux.HandleFunc("POST /restore", s.handleRestore)
 }
 
 // ─── auth ────────────────────────────────────────────────────────────────────
@@ -387,5 +394,71 @@ func (s *Server) handleUncheckAll(w http.ResponseWriter, r *http.Request) {
 		"Lang":  s.lang(r),
 		"List":  list,
 		"Items": items,
+	})
+}
+
+func (s *Server) handleBackup(w http.ResponseWriter, r *http.Request) {
+	backup, err := s.DB.ExportBackup()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	filename := "checklist-backup-" + time.Now().Format("20060102-150405") + ".json"
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
+
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+
+	if err := enc.Encode(backup); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (s *Server) handleRestore(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseMultipartForm(4 << 20)
+	if err != nil {
+		http.Error(w, "invalid upload", http.StatusBadRequest)
+		return
+	}
+
+	file, _, err := r.FormFile("backup")
+	if err != nil {
+		http.Error(w, "missing backup file", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(io.LimitReader(file, 4<<20))
+	if err != nil {
+		http.Error(w, "failed to read upload", http.StatusBadRequest)
+		return
+	}
+
+	err = s.DB.RestoreBackup(data)
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			http.Error(w, "invalid backup file", http.StatusBadRequest)
+			return
+		}
+
+		http.Error(w, "restore failed", http.StatusBadRequest)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusFound)
+}
+func (s *Server) handleBackupRestorePage(w http.ResponseWriter, r *http.Request) {
+	if !s.authed(r) {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
+
+	s.render(w, "backup-restore", map[string]any{
+		"T":    func(k string) string { return s.t(r, k) },
+		"Lang": s.lang(r),
 	})
 }

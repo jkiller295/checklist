@@ -24,6 +24,7 @@
         title="{{call .T "language"}}">
         {{if eq .Lang "en"}}🇻🇳 VI{{else}}🇬🇧 EN{{end}}
       </button>
+      <a href="/settings/backups" class="backup-btn">{{call .T "backup_restore"}}</a>
       <form method="POST" action="/logout" style="margin:0">
         <button type="submit" class="signout-btn">{{call .T "sign_out"}}</button>
       </form>
@@ -37,7 +38,7 @@
           + {{call .T "new_list"}}
         </button>
       </div>
-
+      
       <!-- New list modal -->
       <div
         x-data="{open:false, name:''}"
