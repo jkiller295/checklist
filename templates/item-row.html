@@ -2,21 +2,63 @@
 <div
   id="item-{{.Item.ID}}"
   class="item-row {{if .Item.Done}}done{{end}}"
-  x-data="{editing:false, text:'{{js .Item.Text}}'}"
+  x-data="{editing:false, text:'{{js .Item.Text}}', notesOpen:{{if .Item.Notes}}true{{else}}false{{end}}, notes:'{{js .Item.Notes}}', notesSaved:true, showStatus:false, notesTimer:null,
+    saveNotes() {
+      clearTimeout(this.notesTimer);
+      this.notesSaved = false;
+      this.showStatus = true;
+      this.notesTimer = setTimeout(() => {
+        const fd = new FormData();
+        fd.append('notes', this.notes);
+        fetch('/items/{{.Item.ID}}/notes', {method:'PATCH', body:fd})
+          .then(() => {
+            this.notesSaved = true;
+            setTimeout(() => { this.showStatus = false }, 1500);
+          });
+      }, 600);
+    }
+  }"
   hx-target="this"
   hx-swap="outerHTML"
   hx-on::after-swap="htmx.trigger('#list-stats-wrap', 'refresh-stats')">
 
-  <!-- Normal view -->
-  <label class="item-label" x-show="!editing">
+  <!-- Main row -->
+  <div class="item-main" x-show="!editing">
+    <!-- Checkbox only toggles on checkbox click -->
     <input
       type="checkbox"
       class="item-check"
       {{if .Item.Done}}checked{{end}}
       hx-patch="/items/{{.Item.ID}}/toggle"
-      hx-trigger="change">
-    <span class="item-text">{{.Item.Text}}</span>
-  </label>
+      hx-trigger="change"
+      hx-target="#item-{{.Item.ID}}"
+      hx-swap="outerHTML"
+      hx-on::after-request="htmx.trigger('#list-stats-wrap', 'refresh-stats')"
+      @click.stop>
+
+    <!-- Clicking the text opens the notes panel -->
+    <button type="button" class="item-text-btn" @click="notesOpen=!notesOpen">
+      <span class="item-text">{{.Item.Text}}</span>
+      {{if .Item.Notes}}<span class="notes-dot" title="Has notes"></span>{{end}}
+      <svg class="notes-chevron" :class="notesOpen ? 'open' : ''" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>
+    </button>
+
+    <!-- Actions -->
+    <div class="item-actions">
+      <button
+        class="icon-btn"
+        @click="editing=true; $nextTick(()=>{ $refs.editInput.focus(); $refs.editInput.select() })"
+        title="{{call .T "edit"}}">{{template "icons/pencil" .}}</button>
+      <button
+        class="icon-btn danger btn-danger"
+        hx-delete="/items/{{.Item.ID}}"
+        hx-confirm="{{call .T "delete_item_confirm"}}"
+        hx-target="#item-{{.Item.ID}}"
+        hx-swap="outerHTML"
+        hx-on::after-request="htmx.trigger('#list-stats-wrap', 'refresh-stats')"
+        title="{{call .T "delete"}}">{{template "icons/trash" .}}</button>
+    </div>
+  </div>
 
   <!-- Edit view -->
   <form
@@ -37,20 +79,16 @@
     <button type="button" class="btn-xs-ghost" @click="editing=false">{{call .T "cancel"}}</button>
   </form>
 
-  <!-- Actions -->
-  <div class="item-actions" x-show="!editing">
-    <button
-      class="icon-btn"
-      @click="editing=true; $nextTick(()=>{ $refs.editInput.focus(); $refs.editInput.select() })"
-      title="{{call .T "edit"}}">{{template "icons/pencil" .}}</button>
-    <button
-      class="icon-btn danger btn-danger"
-      hx-delete="/items/{{.Item.ID}}"
-      hx-confirm="{{call .T "delete_item_confirm"}}"
-      hx-target="#item-{{.Item.ID}}"
-      hx-swap="outerHTML"
-      hx-on::after-request="htmx.trigger('#list-stats-wrap', 'refresh-stats')"
-      title="{{call .T "delete"}}">{{template "icons/trash" .}}</button>
+  <!-- Notes panel -->
+  <div class="item-notes-panel" x-show="notesOpen && !editing" x-cloak x-transition:enter="notes-enter" x-transition:enter-start="notes-enter-start" x-transition:enter-end="notes-enter-end">
+    <textarea
+      class="item-notes-textarea"
+      placeholder="Add notes, aisle number, price…"
+      x-model="notes"
+      @input="saveNotes()"
+      rows="3">{{.Item.Notes}}</textarea>
+    <span class="notes-status" x-show="showStatus && !notesSaved">saving…</span>
+    <span class="notes-status saved" x-show="showStatus && notesSaved">saved ✓</span>
   </div>
 </div>
 {{end}}

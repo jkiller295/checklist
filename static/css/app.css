@@ -452,16 +452,23 @@ button,.btn {
 
 .item-row {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
+  flex-direction: column;
+  padding: 0;
   border-radius: 9px;
   background: var(--surface);
   border: 1px solid var(--border);
-  transition: background .15s;
+  transition: background .15s, border-color .15s;
+  overflow: hidden;
 }
 .item-row:hover { background: #fdf9f5; }
 .item-row.done { background: #f8f6f3; }
+
+.item-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+}
 
 .item-label {
   display: flex;
@@ -509,11 +516,87 @@ button,.btn {
   text-decoration-color: var(--done-col);
 }
 
+.item-text-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  min-width: 0;
+}
+.item-text-btn:hover .item-text { color: var(--accent); }
+.done .item-text-btn:hover .item-text { color: var(--done-col); }
+
+.notes-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.notes-chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--ink-soft);
+  flex-shrink: 0;
+  transition: transform .2s;
+  opacity: 0.5;
+}
+.notes-chevron.open { transform: rotate(180deg); }
+
 .item-actions {
   display: flex;
   gap: 2px;
   margin-left: auto;
   flex-shrink: 0;
+}
+
+/* ── Notes panel ───────────────────────────────────────────────── */
+.item-notes-panel {
+  border-top: 1px solid var(--border);
+  padding: 10px 12px 12px;
+  background: #faf8f5;
+}
+
+.item-notes-textarea {
+  width: 100%;
+  border: 1.5px solid var(--border);
+  border-radius: 7px;
+  padding: 8px 10px;
+  font-size: .875rem;
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--surface);
+  resize: vertical;
+  outline: none;
+  transition: border-color .15s;
+  line-height: 1.5;
+}
+.item-notes-textarea:focus {
+  border-color: var(--accent);
+}
+.item-notes-textarea::placeholder {
+  color: var(--ink-soft);
+  opacity: .6;
+}
+
+.notes-status {
+  display: block;
+  font-size: .75rem;
+  color: var(--ink-soft);
+  margin-top: 4px;
+  height: 1em;
+}
+.notes-status.saved {
+  color: var(--accent);
 }
 
 .item-edit-form {

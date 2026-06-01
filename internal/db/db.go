@@ -24,6 +24,7 @@ type Item struct {
 	ListID    int64
 	Text      string
 	Done      bool
+	Notes     string
 	CreatedAt time.Time
 }
 
@@ -45,6 +46,7 @@ type BackupItem struct {
 	ListID    int64  `json:"listId"`
 	Text      string `json:"text"`
 	Done      bool   `json:"done"`
+	Notes     string `json:"notes"`
 	CreatedAt string `json:"createdAt"`
 }
 
@@ -76,7 +78,12 @@ func (d *DB) migrate() error {
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);
 	`)
-	return err
+	if err != nil {
+		return err
+	}
+	// Migration: add notes column if it doesn't exist
+	_, _ = d.conn.Exec(`ALTER TABLE items ADD COLUMN notes TEXT NOT NULL DEFAULT ''`)
+	return nil
 }
 
 // Lists
@@ -151,7 +158,7 @@ func (d *DB) DeleteList(id int64) error {
 
 func (d *DB) GetItems(listID int64) ([]Item, error) {
 	rows, err := d.conn.Query(`
-		SELECT id, list_id, text, done, created_at
+		SELECT id, list_id, text, done, notes, created_at
 		FROM items WHERE list_id=?
 		ORDER BY done ASC, text ASC
 	`, listID)
@@ -164,7 +171,7 @@ func (d *DB) GetItems(listID int64) ([]Item, error) {
 	for rows.Next() {
 		var it Item
 		var done int
-		if err := rows.Scan(&it.ID, &it.ListID, &it.Text, &done, &it.CreatedAt); err != nil {
+		if err := rows.Scan(&it.ID, &it.ListID, &it.Text, &done, &it.Notes, &it.CreatedAt); err != nil {
 			return nil, err
 		}
 		it.Done = done == 1
@@ -181,8 +188,8 @@ func (d *DB) CreateItem(listID int64, text string) (*Item, error) {
 	id, _ := res.LastInsertId()
 	var it Item
 	var done int
-	err = d.conn.QueryRow(`SELECT id, list_id, text, done, created_at FROM items WHERE id=?`, id).
-		Scan(&it.ID, &it.ListID, &it.Text, &done, &it.CreatedAt)
+	err = d.conn.QueryRow(`SELECT id, list_id, text, done, notes, created_at FROM items WHERE id=?`, id).
+		Scan(&it.ID, &it.ListID, &it.Text, &done, &it.Notes, &it.CreatedAt)
 	it.Done = done == 1
 	return &it, err
 }
@@ -194,8 +201,8 @@ func (d *DB) ToggleItem(id int64) (*Item, error) {
 	}
 	var it Item
 	var done int
-	err = d.conn.QueryRow(`SELECT id, list_id, text, done, created_at FROM items WHERE id=?`, id).
-		Scan(&it.ID, &it.ListID, &it.Text, &done, &it.CreatedAt)
+	err = d.conn.QueryRow(`SELECT id, list_id, text, done, notes, created_at FROM items WHERE id=?`, id).
+		Scan(&it.ID, &it.ListID, &it.Text, &done, &it.Notes, &it.CreatedAt)
 	it.Done = done == 1
 	return &it, err
 }
@@ -207,8 +214,21 @@ func (d *DB) UpdateItem(id int64, text string) (*Item, error) {
 	}
 	var it Item
 	var done int
-	err = d.conn.QueryRow(`SELECT id, list_id, text, done, created_at FROM items WHERE id=?`, id).
-		Scan(&it.ID, &it.ListID, &it.Text, &done, &it.CreatedAt)
+	err = d.conn.QueryRow(`SELECT id, list_id, text, done, notes, created_at FROM items WHERE id=?`, id).
+		Scan(&it.ID, &it.ListID, &it.Text, &done, &it.Notes, &it.CreatedAt)
+	it.Done = done == 1
+	return &it, err
+}
+
+func (d *DB) UpdateItemNotes(id int64, notes string) (*Item, error) {
+	_, err := d.conn.Exec(`UPDATE items SET notes=? WHERE id=?`, notes, id)
+	if err != nil {
+		return nil, err
+	}
+	var it Item
+	var done int
+	err = d.conn.QueryRow(`SELECT id, list_id, text, done, notes, created_at FROM items WHERE id=?`, id).
+		Scan(&it.ID, &it.ListID, &it.Text, &done, &it.Notes, &it.CreatedAt)
 	it.Done = done == 1
 	return &it, err
 }
@@ -257,7 +277,7 @@ func (d *DB) ExportBackup() (*BackupFile, error) {
 	}
 
 	itemRows, err := d.conn.Query(`
-		SELECT id, list_id, text, done, created_at
+		SELECT id, list_id, text, done, notes, created_at
 		FROM items
 		ORDER BY list_id ASC, done ASC, text ASC, id ASC
 	`)
@@ -272,7 +292,7 @@ func (d *DB) ExportBackup() (*BackupFile, error) {
 		var done int
 		var createdAt time.Time
 
-		if err := itemRows.Scan(&item.ID, &item.ListID, &item.Text, &done, &createdAt); err != nil {
+		if err := itemRows.Scan(&item.ID, &item.ListID, &item.Text, &done, &item.Notes, &createdAt); err != nil {
 			return nil, err
 		}
 
@@ -361,9 +381,9 @@ func (d *DB) RestoreBackup(data []byte) error {
 		}
 
 		_, err = tx.Exec(`
-			INSERT INTO items (id, list_id, text, done, created_at)
-			VALUES (?, ?, ?, ?, ?)
-		`, item.ID, item.ListID, item.Text, done, createdAt)
+			INSERT INTO items (id, list_id, text, done, notes, created_at)
+			VALUES (?, ?, ?, ?, ?, ?)
+		`, item.ID, item.ListID, item.Text, done, item.Notes, createdAt)
 		if err != nil {
 			return err
 		}

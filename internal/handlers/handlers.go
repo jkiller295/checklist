@@ -89,6 +89,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /lists/{id}/items", s.handleCreateItem)
 	mux.HandleFunc("PATCH /items/{id}/toggle", s.handleToggleItem)
 	mux.HandleFunc("PUT /items/{id}", s.handleUpdateItem)
+	mux.HandleFunc("PATCH /items/{id}/notes", s.handleUpdateItemNotes)
 	mux.HandleFunc("DELETE /items/{id}", s.handleDeleteItem)
 	mux.HandleFunc("DELETE /lists/{id}/checked", s.handleClearChecked)
 	mux.HandleFunc("POST /lists/{id}/check-all", s.handleCheckAll)
@@ -298,6 +299,21 @@ func (s *Server) handleUpdateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	item, err := s.DB.UpdateItem(id, text)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	s.render(w, "item-row.html", map[string]any{
+		"T":    func(k string) string { return s.t(r, k) },
+		"Lang": s.lang(r),
+		"Item": item,
+	})
+}
+
+func (s *Server) handleUpdateItemNotes(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	notes := r.FormValue("notes")
+	item, err := s.DB.UpdateItemNotes(id, notes)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
